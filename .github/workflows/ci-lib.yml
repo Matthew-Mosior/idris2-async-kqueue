@@ -136,8 +136,7 @@ jobs:
               gmp \
               llvm \
               ncurses \
-              libiconv \
-              libx11
+              libiconv
             # Idris2 and pack invoke `make`, while NetBSD's system make is BSD make.
             ln -sf /usr/pkg/bin/gmake /usr/pkg/bin/make
             export PATH="/usr/pkg/bin:/usr/pkg/sbin:$PATH"
@@ -149,9 +148,12 @@ jobs:
               https://github.com/cisco/ChezScheme.git \
               /tmp/ChezScheme
             cd /tmp/ChezScheme
-            CC=clang ./configure \
-              --threads \
-              --installprefix=/usr/pkg
+            CC=clang \
+              CFLAGS="-I/usr/X11R7/include" \
+              LDFLAGS="-L/usr/X11R7/lib -Wl,-R/usr/X11R7/lib" \
+              ./configure \
+                --threads \
+                --installprefix=/usr/pkg
             make CC=clang
             make install
             command -v scheme
