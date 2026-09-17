@@ -49,25 +49,85 @@ jobs:
           pack --no-prompt cleanbuild
           pack run
 
-  freebsd:
-    name: FreeBSD / Idris2 latest
+  # freebsd:
+    # name: FreeBSD / Idris2 latest
+    # runs-on: ubuntu-latest
+    # strategy:
+      # fail-fast: false
+    # steps:
+      # - name: Checkout
+        # uses: actions/checkout@v4
+      # - name: Build and test on FreeBSD
+        # uses: vmactions/freebsd-vm@v1
+        # with:
+          # release: "15.0"
+          # arch: x86_64
+          # usesh: true
+          # mem: 8192
+          # sync: rsync
+          # copyback: false
+          # prepare: |
+            # pkg install -y \
+              # bash \
+              # coreutils \
+              # curl \
+              # git \
+              # gmake \
+              # gmp \
+              # llvm \
+              # ncurses \
+              # libiconv \
+              # libX11
+            # # Idris2 and pack invoke `make`, but FreeBSD's system make is
+            # # BSD make. Put GNU Make first on PATH under the expected name.
+            # ln -sf /usr/local/bin/gmake /usr/local/bin/make
+            # export PATH="/usr/local/bin:$PATH"
+            # command -v clang
+            # clang --version
+            # git clone --depth=1 \
+              # https://github.com/cisco/ChezScheme.git \
+              # /tmp/ChezScheme
+            # cd /tmp/ChezScheme
+            # CC=clang ./configure \
+              # --threads \
+              # --installprefix=/usr/local
+            # gmake CC=clang
+            # gmake install
+            # command -v scheme
+            # scheme --version
+          # run: |
+            # set -eux
+            # export PATH="$HOME/.local/bin:/usr/local/bin:$PATH"
+            # printf 'scheme\n' | \
+              # bash -c "$(curl -fsSL https://raw.githubusercontent.com/stefan-hoeck/idris2-pack/main/install.bash)"
+            # export PATH="$HOME/.local/bin:/usr/local/bin:$PATH"
+            # pack --no-prompt install async-kqueue
+            # cd test
+            # pack --no-prompt cleanbuild
+            # pack run
+
+  netbsd:
+    name: NetBSD / Idris2 latest
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Build and test on FreeBSD
-        uses: vmactions/freebsd-vm@v1
+      - name: Build and test on NetBSD
+        uses: vmactions/netbsd-vm@v1
         with:
-          release: "15.0"
+          release: "10.0"
           arch: x86_64
           usesh: true
           mem: 8192
           sync: rsync
           copyback: false
           prepare: |
-            pkg install -y \
+            PKG_PATH="https://cdn.NetBSD.org/pub/pkgsrc/packages/NetBSD/amd64/$(uname -r | cut -d_ -f1)/All"
+            export PKG_PATH
+            pkg_add pkgin
+            pkgin -y install \
               bash \
               coreutils \
               curl \
@@ -77,11 +137,12 @@ jobs:
               llvm \
               ncurses \
               libiconv \
-              libX11
-            # Idris2 and pack invoke `make`, but FreeBSD's system make is
-            # BSD make. Put GNU Make first on PATH under the expected name.
-            ln -sf /usr/local/bin/gmake /usr/local/bin/make
-            export PATH="/usr/local/bin:$PATH"
+              libx11
+            # Idris2 and pack invoke `make`, while NetBSD's system make is BSD make.
+            ln -sf /usr/pkg/bin/gmake /usr/pkg/bin/make
+            export PATH="/usr/pkg/bin:/usr/pkg/sbin:$PATH"
+            command -v make
+            make --version
             command -v clang
             clang --version
             git clone --depth=1 \
@@ -90,17 +151,21 @@ jobs:
             cd /tmp/ChezScheme
             CC=clang ./configure \
               --threads \
-              --installprefix=/usr/local
-            gmake CC=clang
-            gmake install
+              --installprefix=/usr/pkg
+            make CC=clang
+            make install
             command -v scheme
             scheme --version
           run: |
             set -eux
-            export PATH="$HOME/.local/bin:/usr/local/bin:$PATH"
+            export PATH="$HOME/.local/bin:/usr/pkg/bin:/usr/pkg/sbin:$PATH"
+            command -v make
+            make --version
+            command -v scheme
+            scheme --version
             printf 'scheme\n' | \
               bash -c "$(curl -fsSL https://raw.githubusercontent.com/stefan-hoeck/idris2-pack/main/install.bash)"
-            export PATH="$HOME/.local/bin:/usr/local/bin:$PATH"
+            export PATH="$HOME/.local/bin:/usr/pkg/bin:/usr/pkg/sbin:$PATH"
             pack --no-prompt install async-kqueue
             cd test
             pack --no-prompt cleanbuild
