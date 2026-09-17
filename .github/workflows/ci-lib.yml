@@ -78,6 +78,10 @@ jobs:
               ncurses \
               libiconv \
               libX11
+            # Idris2 and pack invoke `make`, but FreeBSD's system make is
+            # BSD make. Put GNU Make first on PATH under the expected name.
+            ln -sf /usr/local/bin/gmake /usr/local/bin/make
+            export PATH="/usr/local/bin:$PATH"
             command -v clang
             clang --version
             git clone --depth=1 \
