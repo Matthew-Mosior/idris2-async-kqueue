@@ -80,7 +80,8 @@ jobs:
               gmp \
               llvm \
               ncurses \
-              libiconv
+              libiconv \
+              libX11
 
             command -v clang
             clang --version
