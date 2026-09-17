@@ -141,6 +141,17 @@ jobs:
             # Idris2 and pack invoke `make`, while NetBSD's system make is BSD make.
             ln -sf /usr/pkg/bin/gmake /usr/pkg/bin/make
             export PATH="/usr/pkg/bin:/usr/pkg/sbin:$PATH"
+            mkdir -p /tmp/netbsd-sets
+            curl -fL \
+              https://cdn.NetBSD.org/pub/NetBSD/NetBSD-10.0/amd64/binary/sets/xbase.tar.xz \
+              -o /tmp/netbsd-sets/xbase.tar.xz
+            curl -fL \
+              https://cdn.NetBSD.org/pub/NetBSD/NetBSD-10.0/amd64/binary/sets/xcomp.tar.xz \
+              -o /tmp/netbsd-sets/xcomp.tar.xz
+            tar -C / -xJf /tmp/netbsd-sets/xbase.tar.xz
+            tar -C / -xJf /tmp/netbsd-sets/xcomp.tar.xz
+            test -f /usr/X11R7/include/X11/Xlib.h
+            test -f /usr/X11R7/lib/libX11.so
             command -v make
             make --version
             command -v clang
