@@ -1,0 +1,12 @@
+package async-kqueue-test
+version = 0.1.0
+authors = "Matthew-Mosior"
+depends = async-spec
+        , async-kqueue
+modules = Test.Async.BQueue
+        , Test.Async.Cancel
+        , Test.Async.Core
+        , Test.Async.Race
+sourcedir = "src"
+executable = "async-kqueue-test"
+main = Test.Async.Main

@@ -1,0 +1,5 @@
+[custom.all.async-kqueue]
+type = "local"
+path = "."
+ipkg = "async-kqueue.ipkg"
+test = "test/test.ipkg"

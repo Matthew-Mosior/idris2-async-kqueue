@@ -1,0 +1,96 @@
+---
+name: Build
+
+on:
+  push:
+    branches:
+      - '**'
+    tags:
+      - '**'
+  pull_request:
+    branches:
+      - main
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  macos:
+    name: macOS / Idris2 latest
+    runs-on: macos-latest
+
+    strategy:
+      fail-fast: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew update
+          brew install chezscheme coreutils gmp
+
+      - name: Install pack
+        run: |
+          bash -c "$(curl -fsSL https://raw.githubusercontent.com/stefan-hoeck/idris2-pack/main/install.bash)"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Build async-kqueue
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          pack --no-prompt install async-kqueue
+
+      - name: Run tests
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          cd test
+          pack --no-prompt cleanbuild
+          pack run
+
+  freebsd:
+    name: FreeBSD / Idris2 latest
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build and test on FreeBSD
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: "15.0"
+          arch: x86_64
+          usesh: true
+          mem: 8192
+          sync: rsync
+
+          prepare: |
+            pkg install -y \
+              bash \
+              chez-scheme \
+              coreutils \
+              curl \
+              git \
+              gmake \
+              gmp \
+              llvm
+
+          run: |
+            set -eux
+
+            export PATH="$HOME/.local/bin:/usr/local/bin:$PATH"
+
+            bash -c "$(curl -fsSL https://raw.githubusercontent.com/stefan-hoeck/idris2-pack/main/install.bash)"
+
+            export PATH="$HOME/.local/bin:/usr/local/bin:$PATH"
+
+            pack --no-prompt install async-kqueue
+
+            cd test
+            pack --no-prompt cleanbuild
+            pack run
