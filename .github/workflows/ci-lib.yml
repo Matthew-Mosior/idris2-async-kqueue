@@ -49,63 +49,6 @@ jobs:
           pack --no-prompt cleanbuild
           pack run
 
-  # freebsd:
-    # name: FreeBSD / Idris2 latest
-    # runs-on: ubuntu-latest
-    # strategy:
-      # fail-fast: false
-    # steps:
-      # - name: Checkout
-        # uses: actions/checkout@v4
-      # - name: Build and test on FreeBSD
-        # uses: vmactions/freebsd-vm@v1
-        # with:
-          # release: "15.0"
-          # arch: x86_64
-          # usesh: true
-          # mem: 8192
-          # sync: rsync
-          # copyback: false
-          # prepare: |
-            # pkg install -y \
-              # bash \
-              # coreutils \
-              # curl \
-              # git \
-              # gmake \
-              # gmp \
-              # llvm \
-              # ncurses \
-              # libiconv \
-              # libX11
-            # # Idris2 and pack invoke `make`, but FreeBSD's system make is
-            # # BSD make. Put GNU Make first on PATH under the expected name.
-            # ln -sf /usr/local/bin/gmake /usr/local/bin/make
-            # export PATH="/usr/local/bin:$PATH"
-            # command -v clang
-            # clang --version
-            # git clone --depth=1 \
-              # https://github.com/cisco/ChezScheme.git \
-              # /tmp/ChezScheme
-            # cd /tmp/ChezScheme
-            # CC=clang ./configure \
-              # --threads \
-              # --installprefix=/usr/local
-            # gmake CC=clang
-            # gmake install
-            # command -v scheme
-            # scheme --version
-          # run: |
-            # set -eux
-            # export PATH="$HOME/.local/bin:/usr/local/bin:$PATH"
-            # printf 'scheme\n' | \
-              # bash -c "$(curl -fsSL https://raw.githubusercontent.com/stefan-hoeck/idris2-pack/main/install.bash)"
-            # export PATH="$HOME/.local/bin:/usr/local/bin:$PATH"
-            # pack --no-prompt install async-kqueue
-            # cd test
-            # pack --no-prompt cleanbuild
-            # pack run
-
   netbsd:
     name: NetBSD / Idris2 latest
     runs-on: ubuntu-latest
@@ -174,6 +117,9 @@ jobs:
           run: |
             set -eux
             export PATH="$HOME/.local/bin:/usr/pkg/bin:/usr/pkg/sbin:$PATH"
+            export CPPFLAGS="-I/usr/pkg/include"
+            export CFLAGS="-I/usr/pkg/include"
+            export LDFLAGS="-L/usr/pkg/lib -Wl,-R/usr/pkg/lib"
             command -v make
             make --version
             command -v scheme
