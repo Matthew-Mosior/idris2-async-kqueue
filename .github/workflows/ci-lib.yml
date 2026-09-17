@@ -68,17 +68,35 @@ jobs:
           usesh: true
           mem: 8192
           sync: rsync
+          copyback: false
 
           prepare: |
             pkg install -y \
               bash \
-              chez-scheme \
               coreutils \
               curl \
               git \
               gmake \
               gmp \
-              llvm
+              llvm \
+              ncurses \
+              libiconv
+
+            git clone --depth=1 \
+              https://github.com/cisco/ChezScheme.git \
+              /tmp/ChezScheme
+
+            cd /tmp/ChezScheme
+
+            ./configure \
+              --threads \
+              --installprefix=/usr/local
+
+            gmake
+            gmake install
+
+            command -v scheme
+            scheme --version
 
           run: |
             set -eux
@@ -92,5 +110,6 @@ jobs:
             pack --no-prompt install async-kqueue
 
             cd test
+
             pack --no-prompt cleanbuild
             pack run
