@@ -52,14 +52,11 @@ jobs:
   freebsd:
     name: FreeBSD / Idris2 latest
     runs-on: ubuntu-latest
-
     strategy:
       fail-fast: false
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Build and test on FreeBSD
         uses: vmactions/freebsd-vm@v1
         with:
@@ -69,7 +66,6 @@ jobs:
           mem: 8192
           sync: rsync
           copyback: false
-
           prepare: |
             pkg install -y \
               bash \
@@ -82,38 +78,26 @@ jobs:
               ncurses \
               libiconv \
               libX11
-
             command -v clang
             clang --version
-
             git clone --depth=1 \
               https://github.com/cisco/ChezScheme.git \
               /tmp/ChezScheme
-
             cd /tmp/ChezScheme
-
             CC=clang ./configure \
               --threads \
               --installprefix=/usr/local
-
             gmake CC=clang
             gmake install
-
             command -v scheme
             scheme --version
-
           run: |
             set -eux
-
             export PATH="$HOME/.local/bin:/usr/local/bin:$PATH"
-
-            bash -c "$(curl -fsSL https://raw.githubusercontent.com/stefan-hoeck/idris2-pack/main/install.bash)"
-
+            printf 'scheme\n' | \
+              bash -c "$(curl -fsSL https://raw.githubusercontent.com/stefan-hoeck/idris2-pack/main/install.bash)"
             export PATH="$HOME/.local/bin:/usr/local/bin:$PATH"
-
             pack --no-prompt install async-kqueue
-
             cd test
-
             pack --no-prompt cleanbuild
             pack run
