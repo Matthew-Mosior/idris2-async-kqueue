@@ -129,6 +129,17 @@ jobs:
             export PATH="$HOME/.local/bin:/usr/pkg/bin:/usr/pkg/sbin:$PATH"
             # Avoid reusing a partially corrupted git object cache.
             rm -rf "$HOME/.cache/pack/git"
+            mkdir -p /tmp/ci-bin
+            cat >/tmp/ci-bin/cc <<'EOF'
+            #!/bin/sh
+            exec /usr/pkg/bin/clang \
+              -I/usr/pkg/include \
+              -include sys/stat.h \
+              "$@"
+            EOF
+            chmod +x /tmp/ci-bin/cc
+            export PATH="/tmp/ci-bin:/usr/pkg/bin:/usr/pkg/sbin:$PATH"
+            export CC=cc
             pack --no-prompt install async-kqueue
             cd test
             pack --no-prompt cleanbuild
