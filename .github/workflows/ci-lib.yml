@@ -71,7 +71,6 @@ jobs:
             pkg_add pkgin
             pkgin -y install \
               bash \
-              coreutils \
               curl \
               git \
               gmake \
@@ -81,14 +80,11 @@ jobs:
               lld \
               ncurses \
               libiconv
-            # Idris2 / Pack assume GNU make and GNU basename behavior.
+            # Idris2 and Pack's Makefiles require GNU make.
             ln -sf /usr/pkg/bin/gmake /usr/pkg/bin/make
-            ln -sf /usr/pkg/bin/gbasename /usr/pkg/bin/basename
             export PATH="/usr/pkg/bin:/usr/pkg/sbin:$PATH"
             command -v make
             make --version
-            command -v basename
-            basename --version
             command -v clang
             clang --version
             command -v ld.lld
