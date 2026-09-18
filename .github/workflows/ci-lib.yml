@@ -24,32 +24,91 @@ jobs:
       fail-fast: false
 
     steps:
+      # ------------------------------------------------------------
+      # Checkout async-kqueue.
+      # ------------------------------------------------------------
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ------------------------------------------------------------
+      # Install native build dependencies.
+      #
+      # Chez Scheme itself is built from the latest upstream source
+      # rather than installed through Homebrew.
+      # ------------------------------------------------------------
       - name: Install dependencies
         run: |
           set -euxo pipefail
 
-          brew install chezscheme gmp
-
-          command -v scheme
-          scheme --version
+          brew install gmp
 
           command -v cc
           cc --version
 
+          command -v make
+          make --version
+
+          command -v git
+          git --version
+
           uname -a
           uname -m
 
+      # ------------------------------------------------------------
+      # Build and install the latest Chez Scheme from Git.
+      #
+      # Install into ~/.local so:
+      #
+      #   * sudo is not required
+      #   * scheme is available to Idris2/Pack
+      #   * the installation is isolated to the CI user
+      #
+      # --threads gives us the threaded Chez runtime required by the
+      # Idris2 async libraries.
+      # ------------------------------------------------------------
+      - name: Build and install Chez Scheme
+        run: |
+          set -euxo pipefail
+
+          git clone --depth=1 \
+            https://github.com/cisco/ChezScheme.git \
+            /tmp/ChezScheme
+
+          cd /tmp/ChezScheme
+
+          ./configure \
+            --threads \
+            --installprefix="$HOME/.local"
+
+          make -j"$(sysctl -n hw.ncpu)"
+          make install
+
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.local/bin:$PATH"
+
+          command -v scheme
+          scheme --version
+
+      # ------------------------------------------------------------
+      # Install Idris2 + Pack.
+      #
+      # At this point ~/.local/bin contains the Chez Scheme we just
+      # built, so the Pack installer can bootstrap Idris2 using it.
+      # ------------------------------------------------------------
       - name: Install Idris2 and Pack
         run: |
           set -euxo pipefail
 
-          bash -c "$(curl -fsSL https://raw.githubusercontent.com/stefan-hoeck/idris2-pack/main/install.bash)"
+          export PATH="$HOME/.local/bin:$PATH"
+
+          echo "Using Chez Scheme:"
+          command -v scheme
+          scheme --version
+
+          bash -c "$(curl -fsSL \
+            https://raw.githubusercontent.com/stefan-hoeck/idris2-pack/main/install.bash)"
 
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
           export PATH="$HOME/.local/bin:$PATH"
 
           command -v idris2
@@ -58,6 +117,12 @@ jobs:
           command -v pack
           pack help >/dev/null
 
+      # ------------------------------------------------------------
+      # Print the environment before attempting the actual build.
+      #
+      # Keep this while bringing the macOS CI up so failures clearly
+      # show which compiler/runtime/architecture is being used.
+      # ------------------------------------------------------------
       - name: Show environment
         run: |
           set -euxo pipefail
@@ -66,25 +131,42 @@ jobs:
 
           echo "PATH=$PATH"
 
+          echo
           echo "Idris2:"
           command -v idris2
           idris2 --version
 
+          echo
           echo "Pack:"
           command -v pack
+          pack help >/dev/null
 
-          echo "Chez:"
+          echo
+          echo "Chez Scheme:"
           command -v scheme
           scheme --version
 
-          echo "Compiler:"
+          echo
+          echo "C compiler:"
           command -v cc
           cc --version
 
+          echo
           echo "System:"
           uname -a
           uname -m
 
+      # ------------------------------------------------------------
+      # Build the checked-out async-kqueue source.
+      #
+      # Do NOT use:
+      #
+      #   pack install async-kqueue
+      #
+      # here. That asks Pack to install async-kqueue from its package
+      # collection instead of testing the source checked out by this
+      # workflow.
+      # ------------------------------------------------------------
       - name: Build async-kqueue
         run: |
           set -euxo pipefail
@@ -93,6 +175,9 @@ jobs:
 
           pack --no-prompt cleanbuild
 
+      # ------------------------------------------------------------
+      # Build the async-kqueue test package.
+      # ------------------------------------------------------------
       - name: Build tests
         run: |
           set -euxo pipefail
@@ -102,6 +187,13 @@ jobs:
           cd test
           pack --no-prompt cleanbuild
 
+      # ------------------------------------------------------------
+      # Run the tests.
+      #
+      # pack libs-path contains the native support libraries installed
+      # by async-kqueue and its dependencies. macOS uses
+      # DYLD_LIBRARY_PATH rather than LD_LIBRARY_PATH.
+      # ------------------------------------------------------------
       - name: Run tests
         run: |
           set -euxo pipefail
