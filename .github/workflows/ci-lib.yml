@@ -79,6 +79,7 @@ jobs:
               gmp \
               llvm \
               clang \
+              lld \
               ncurses \
               libiconv
             # Idris2 and pack invoke `make`, while NetBSD's system make is BSD make.
