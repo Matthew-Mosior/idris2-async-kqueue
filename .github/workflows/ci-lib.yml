@@ -153,7 +153,19 @@ jobs:
             command -v cc
             cc --version
             pack --no-prompt install async-kqueue
+            POSIX_LIB="$(find "$HOME/.local/state/pack/install" \
+              -type d \
+              -path '*/posix/*/idris2-0.8.0/lib' \
+              -print \
+              -quit)"
+            echo "POSIX_LIB=$POSIX_LIB"
+            ls -la "$POSIX_LIB"
+            if [ -f "$POSIX_LIB/posix-idris" ] && [ ! -f "$POSIX_LIB/posix-idris.so" ]; then
+              cp "$POSIX_LIB/posix-idris" "$POSIX_LIB/posix-idris.so"
+            fi
+            test -f "$POSIX_LIB/posix-idris.so"
             cd test
             pack --no-prompt cleanbuild
             export LD_LIBRARY_PATH="$(pack libs-path)"
+            echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
             pack run
