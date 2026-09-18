@@ -52,8 +52,6 @@ jobs:
   netbsd:
     name: NetBSD / Idris2 latest
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -62,12 +60,13 @@ jobs:
         with:
           release: "10.0"
           arch: x86_64
-          usesh: true
           mem: 8192
           sync: rsync
           copyback: false
+          cache-after-prepare: true
           prepare: |
-            PKG_PATH="https://cdn.NetBSD.org/pub/pkgsrc/packages/NetBSD/amd64/$(uname -r | cut -d_ -f1)/All"
+            set -eux
+            PKG_PATH="https://cdn.NetBSD.org/pub/pkgsrc/packages/NetBSD/x86_64/10.0/All"
             export PKG_PATH
             pkg_add pkgin
             pkgin -y install \
@@ -82,10 +81,21 @@ jobs:
               lld \
               ncurses \
               libiconv
-            # Idris2 and pack invoke `make`, while NetBSD's system make is BSD make.
+            # Idris2 / Pack assume GNU make and GNU basename behavior.
             ln -sf /usr/pkg/bin/gmake /usr/pkg/bin/make
             ln -sf /usr/pkg/bin/gbasename /usr/pkg/bin/basename
             export PATH="/usr/pkg/bin:/usr/pkg/sbin:$PATH"
+            command -v make
+            make --version
+            command -v basename
+            basename --version
+            command -v clang
+            clang --version
+            command -v ld.lld
+            ld.lld --version
+            # ------------------------------------------------------------
+            # Install NetBSD native X11 development sets.
+            # ------------------------------------------------------------
             mkdir -p /tmp/netbsd-sets
             curl -fL \
               https://cdn.NetBSD.org/pub/NetBSD/NetBSD-10.0/amd64/binary/sets/xbase.tar.xz \
@@ -97,62 +107,99 @@ jobs:
             tar -C / -xJf /tmp/netbsd-sets/xcomp.tar.xz
             test -f /usr/X11R7/include/X11/Xlib.h
             test -f /usr/X11R7/lib/libX11.so
-            command -v make
-            make --version
-            command -v clang
-            clang --version
+            # ------------------------------------------------------------
+            # Build Chez Scheme with threading and X11 support.
+            # ------------------------------------------------------------
             git clone --depth=1 \
               https://github.com/cisco/ChezScheme.git \
               /tmp/ChezScheme
             cd /tmp/ChezScheme
             CC=clang \
-              CFLAGS="-I/usr/X11R7/include" \
-              LDFLAGS="-L/usr/X11R7/lib -Wl,-R/usr/X11R7/lib" \
-              ./configure \
-                --threads \
-                --installprefix=/usr/pkg
+            CFLAGS="-I/usr/X11R7/include" \
+            LDFLAGS="-L/usr/X11R7/lib -Wl,-R/usr/X11R7/lib" \
+            ./configure \
+              --threads \
+              --installprefix=/usr/pkg
             make CC=clang
             make install
             command -v scheme
             scheme --version
+            # ------------------------------------------------------------
+            # NetBSD/pkgsrc paths needed by Idris2.
+            # ------------------------------------------------------------
+            export CPPFLAGS="-I/usr/pkg/include"
+            export CFLAGS="-I/usr/pkg/include"
+            export LDFLAGS="-L/usr/pkg/lib -Wl,-R/usr/pkg/lib"
+            test -f /usr/pkg/include/gmp.h
+            test -f /usr/pkg/lib/libgmp.so
+            # ------------------------------------------------------------
+            # Install Idris2 + Pack via the pre-built micropack installer.
+            #
+            # This replaces install.bash and avoids building Pack and its
+            # bootstrap dependency stack manually.
+            # ------------------------------------------------------------
+            git clone --depth=1 \
+              https://github.com/stefan-hoeck/idris2-pack.git \
+              /tmp/idris2-pack
+            cd /tmp/idris2-pack
+            make micropack SCHEME=scheme
+            export PATH="$HOME/.local/bin:/usr/pkg/bin:/usr/pkg/sbin:$PATH"
+            command -v idris2
+            command -v pack
+            pack help >/dev/null
+            # Keep the prepared VM small-ish.
+            rm -rf /tmp/ChezScheme
+            rm -rf /tmp/idris2-pack
+            rm -rf /tmp/netbsd-sets
           run: |
             set -eux
             export PATH="$HOME/.local/bin:/usr/pkg/bin:/usr/pkg/sbin:$PATH"
             export CPPFLAGS="-I/usr/pkg/include"
             export CFLAGS="-I/usr/pkg/include"
             export LDFLAGS="-L/usr/pkg/lib -Wl,-R/usr/pkg/lib"
-            curl -fsSL \
-              https://raw.githubusercontent.com/stefan-hoeck/idris2-pack/main/install.bash \
-              -o /tmp/install-pack.sh
-            # `pack info` eagerly scans/caches the entire package collection.
-            # We do not need that during CI bootstrap.
-            sed -i \
-              's|"$BIN_DIR/pack" info|true # skip pack info cache warmup in CI|' \
-              /tmp/install-pack.sh
-            printf 'scheme\n' | bash /tmp/install-pack.sh
-            # Clear transient/corruptible git state.
-            rm -rf "$HOME/.cache/pack/git"
-            rm -rf "$HOME/.cache/pack/.tmp"*
-            # NetBSD exposes the POSIX mode macros through <sys/stat.h>.
-            # idris2-linux's flags generator does not include it, and its
-            # Makefile directly invokes `cc` without CFLAGS/CPPFLAGS.
+            command -v pack
+            command -v idris2
+            command -v scheme
+            command -v ld.lld
+            # ------------------------------------------------------------
+            # NetBSD compatibility wrapper for idris2-linux/posix.
+            #
+            # flags.c uses the S_IRUSR/S_IWUSR/etc. macros without
+            # explicitly including <sys/stat.h>.
+            # ------------------------------------------------------------
             mkdir -p /tmp/ci-bin
-            cat >/tmp/ci-bin/cc <<'EOF'
-            #!/bin/sh
-            case " $* " in
-              *" flags.c "*)
-                exec /usr/pkg/bin/clang -include sys/stat.h "$@"
-                ;;
-              *)
-                exec /usr/pkg/bin/clang "$@"
-                ;;
-            esac
-            EOF
+            printf '%s\n' \
+              '#!/bin/sh' \
+              '' \
+              'case " $* " in' \
+              '  *" flags.c "*)' \
+              '    exec /usr/pkg/bin/clang -include sys/stat.h "$@"' \
+              '    ;;' \
+              '  *)' \
+              '    exec /usr/pkg/bin/clang "$@"' \
+              '    ;;' \
+              'esac' \
+              > /tmp/ci-bin/cc
             chmod +x /tmp/ci-bin/cc
-            export PATH="/tmp/ci-bin:$HOME/.local/bin:/usr/pkg/bin:/usr/pkg/sbin:$PATH"
+            export PATH="/tmp/ci-bin:$PATH"
             command -v cc
             cc --version
-            pack --no-prompt install async-kqueue
+            # ------------------------------------------------------------
+            # Build/install async-kqueue and its dependencies.
+            #
+            # Retry once only if Pack's git cache becomes corrupted.
+            # Do NOT clear the cache proactively.
+            # ------------------------------------------------------------
+            if ! pack --no-prompt install async-kqueue; then
+              echo "Pack install failed; clearing transient git state and retrying once."
+              rm -rf "$HOME/.cache/pack/git"
+              rm -rf "$HOME/.cache/pack/.tmp"*
+              pack --no-prompt install async-kqueue
+            fi
+            # ------------------------------------------------------------
+            # idris2-linux installs the native POSIX support object without
+            # the .so suffix. Chez on NetBSD requests posix-idris.so.
+            # ------------------------------------------------------------
             POSIX_LIB="$(find "$HOME/.local/state/pack/install" \
               -type d \
               -path '*/posix/*/idris2-0.8.0/lib' \
@@ -160,10 +207,14 @@ jobs:
               -quit)"
             echo "POSIX_LIB=$POSIX_LIB"
             ls -la "$POSIX_LIB"
-            if [ -f "$POSIX_LIB/posix-idris" ] && [ ! -f "$POSIX_LIB/posix-idris.so" ]; then
+            if [ -f "$POSIX_LIB/posix-idris" ] &&
+               [ ! -f "$POSIX_LIB/posix-idris.so" ]; then
               cp "$POSIX_LIB/posix-idris" "$POSIX_LIB/posix-idris.so"
             fi
             test -f "$POSIX_LIB/posix-idris.so"
+            # ------------------------------------------------------------
+            # Build and run tests.
+            # ------------------------------------------------------------
             cd test
             pack --no-prompt cleanbuild
             export LD_LIBRARY_PATH="$(pack libs-path)"
