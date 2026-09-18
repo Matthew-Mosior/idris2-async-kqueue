@@ -124,16 +124,34 @@ jobs:
             curl -fsSL \
               https://raw.githubusercontent.com/stefan-hoeck/idris2-pack/main/install.bash \
               -o /tmp/install-pack.sh
-            # The installer ends with `pack info`, which eagerly caches the entire
-            # package collection. This is unnecessary for CI and has proven flaky
-            # under the NetBSD VM due to corrupted Git pack transfers.
+            # `pack info` eagerly scans/caches the entire package collection.
+            # We do not need that during CI bootstrap.
             sed -i \
               's|"$BIN_DIR/pack" info|true # skip pack info cache warmup in CI|' \
               /tmp/install-pack.sh
             printf 'scheme\n' | bash /tmp/install-pack.sh
-            export PATH="$HOME/.local/bin:/usr/pkg/bin:/usr/pkg/sbin:$PATH"
+            # Clear transient/corruptible git state.
             rm -rf "$HOME/.cache/pack/git"
             rm -rf "$HOME/.cache/pack/.tmp"*
+            # NetBSD exposes the POSIX mode macros through <sys/stat.h>.
+            # idris2-linux's flags generator does not include it, and its
+            # Makefile directly invokes `cc` without CFLAGS/CPPFLAGS.
+            mkdir -p /tmp/ci-bin
+            cat >/tmp/ci-bin/cc <<'EOF'
+            #!/bin/sh
+            case " $* " in
+              *" flags.c "*)
+                exec /usr/pkg/bin/clang -include sys/stat.h "$@"
+                ;;
+              *)
+                exec /usr/pkg/bin/clang "$@"
+                ;;
+            esac
+            EOF
+            chmod +x /tmp/ci-bin/cc
+            export PATH="/tmp/ci-bin:$HOME/.local/bin:/usr/pkg/bin:/usr/pkg/sbin:$PATH"
+            command -v cc
+            cc --version
             pack --no-prompt install async-kqueue
             cd test
             pack --no-prompt cleanbuild
