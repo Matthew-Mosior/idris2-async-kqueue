@@ -5,7 +5,6 @@ INSTALLDIR = ../lib
 CPPFLAGS = -fPIC
 
 MACHINE := $(shell $(CC) -dumpmachine)
-LLD := $(shell command -v ld.lld 2>/dev/null)
 
 ifneq (,$(findstring darwin,$(MACHINE)))
 OS := darwin
@@ -17,8 +16,14 @@ else
 $(error async-kqueue-idris is only supported on macOS and BSD systems)
 endif
 
+ifeq ($(OS),darwin)
+LLD := $(shell command -v ld64.lld 2>/dev/null)
+else
+LLD := $(shell command -v ld.lld 2>/dev/null)
+endif
+
 ifeq ($(LLD),)
-$(error ld.lld is required but was not found in PATH)
+$(error LLD is required but was not found in PATH)
 endif
 
 LDFLAGS = --ld-path=$(LLD)
