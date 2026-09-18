@@ -127,6 +127,8 @@ jobs:
             printf 'scheme\n' | \
               bash -c "$(curl -fsSL https://raw.githubusercontent.com/stefan-hoeck/idris2-pack/main/install.bash)"
             export PATH="$HOME/.local/bin:/usr/pkg/bin:/usr/pkg/sbin:$PATH"
+            # Avoid reusing a partially corrupted git object cache.
+            rm -rf "$HOME/.cache/pack/git"
             pack --no-prompt install async-kqueue
             cd test
             pack --no-prompt cleanbuild
