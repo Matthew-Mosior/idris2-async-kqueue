@@ -47,7 +47,7 @@ jobs:
             --threads \
             --installprefix="$HOME/.local"
           make -j"$(sysctl -n hw.ncpu)"
-          make Install
+          make install
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           PATH="$HOME/.local/bin:$PATH"
           export PATH
