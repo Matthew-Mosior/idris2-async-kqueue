@@ -40,7 +40,10 @@ jobs:
         run: |
           set -euxo pipefail
 
-          brew install gmp
+          brew install gmp llvm
+
+          echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
+          export PATH="$(brew --prefix llvm)/bin:$PATH"
 
           command -v cc
           cc --version
