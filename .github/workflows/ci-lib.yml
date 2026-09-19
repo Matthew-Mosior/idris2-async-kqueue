@@ -19,182 +19,62 @@ jobs:
   macos:
     name: macOS / Idris2 latest
     runs-on: macos-latest
-
     strategy:
       fail-fast: false
-
     steps:
-      # ------------------------------------------------------------
-      # Checkout async-kqueue.
-      # ------------------------------------------------------------
       - name: Checkout
         uses: actions/checkout@v4
-
-      # ------------------------------------------------------------
-      # Install native build dependencies.
-      #
-      # Chez Scheme itself is built from the latest upstream Git
-      # source rather than installed through Homebrew.
-      # ------------------------------------------------------------
       - name: Install dependencies
         run: |
           set -euxo pipefail
-
           brew install gmp llvm lld
-
           echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
           echo "$(brew --prefix lld)/bin" >> "$GITHUB_PATH"
-
           export PATH="$(brew --prefix lld)/bin:$(brew --prefix llvm)/bin:$PATH"
-
-          command -v cc
-          cc --version
-
-          command -v ld.lld
-          ld.lld --version
-
-          command -v ld64.lld
-          ld64.lld --version
-
-          command -v make
-          make --version
-
           uname -a
           uname -m
-
-      # ------------------------------------------------------------
-      # Build and install the latest Chez Scheme from Git.
-      # ------------------------------------------------------------
       - name: Build and install Chez Scheme
         run: |
           set -euxo pipefail
-
           git clone --depth=1 \
             https://github.com/cisco/ChezScheme.git \
             /tmp/ChezScheme
-
           cd /tmp/ChezScheme
-
           ./configure \
             --threads \
             --installprefix="$HOME/.local"
-
           make -j"$(sysctl -n hw.ncpu)"
           make install
-
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           export PATH="$HOME/.local/bin:$PATH"
-
-          command -v scheme
-          scheme --version
-
-      # ------------------------------------------------------------
-      # Bootstrap Idris2 + Pack using micropack.
-      #
-      # We deliberately avoid install.bash here because it prompts
-      # interactively for the Scheme executable even after detecting
-      # it, which does not work in GitHub Actions.
-      # ------------------------------------------------------------
       - name: Install Idris2 and Pack
         run: |
           set -euxo pipefail
-
           export PATH="$HOME/.local/bin:$PATH"
-
-          echo "Using Chez Scheme:"
-          command -v scheme
-          scheme --version
-
           git clone --depth=1 \
             https://github.com/stefan-hoeck/idris2-pack.git \
             /tmp/idris2-pack
-
           cd /tmp/idris2-pack
-
           make micropack SCHEME=scheme
-
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           export PATH="$HOME/.local/bin:$PATH"
-
-          command -v idris2
-          idris2 --version
-
-          command -v pack
-          pack help >/dev/null
-
           rm -rf /tmp/idris2-pack
-
-      # ------------------------------------------------------------
-      # Print the environment before building async-kqueue.
-      # ------------------------------------------------------------
-      - name: Show environment
-        run: |
-          set -euxo pipefail
-
-          export PATH="$HOME/.local/bin:$PATH"
-
-          echo "PATH=$PATH"
-
-          echo
-          echo "Idris2:"
-          command -v idris2
-          idris2 --version
-
-          echo
-          echo "Pack:"
-          command -v pack
-          pack help >/dev/null
-
-          echo
-          echo "Chez Scheme:"
-          command -v scheme
-          scheme --version
-
-          echo
-          echo "C compiler:"
-          command -v cc
-          cc --version
-
-          echo
-          echo "System:"
-          uname -a
-          uname -m
-
-      # ------------------------------------------------------------
-      # Build the checked-out async-kqueue source.
-      # ------------------------------------------------------------
       - name: Build async-kqueue
         run: |
           set -euxo pipefail
-
           export PATH="$HOME/.local/bin:$PATH"
-
           pack --no-prompt cleanbuild
-
-      # ------------------------------------------------------------
-      # Build the test package.
-      # ------------------------------------------------------------
       - name: Build tests
         run: |
           set -euxo pipefail
-
           export PATH="$HOME/.local/bin:$PATH"
-
           cd test
           pack --no-prompt cleanbuild
-
-      # ------------------------------------------------------------
-      # Run tests.
-      # ------------------------------------------------------------
       - name: Run tests
         run: |
           set -euxo pipefail
-
           export PATH="$HOME/.local/bin:$PATH"
-
           cd test
-
           export DYLD_LIBRARY_PATH="$(pack libs-path)"
           echo "DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH"
-
           pack run
