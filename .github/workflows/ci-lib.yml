@@ -118,6 +118,12 @@ jobs:
             ln -sf /usr/local/bin/gmake /usr/local/bin/make
             PATH="/usr/local/bin:$HOME/.local/bin:$PATH"
             export PATH
+            CPPFLAGS="-I/usr/local/include"
+            CFLAGS="-I/usr/local/include"
+            LDFLAGS="-L/usr/local/lib"
+            export CPPFLAGS
+            export CFLAGS
+            export LDFLAGS
             command -v cc
             cc --version
             command -v ld.lld
