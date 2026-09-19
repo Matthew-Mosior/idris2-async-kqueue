@@ -113,7 +113,8 @@ jobs:
               curl \
               git \
               gmake \
-              gmp
+              gmp \
+              lang/gcc
             command -v cc
             cc --version
             command -v ld.lld
