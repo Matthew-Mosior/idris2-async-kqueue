@@ -115,6 +115,9 @@ jobs:
               gmake \
               gmp \
               lang/gcc
+            ln -sf /usr/local/bin/gmake /usr/local/bin/make
+            PATH="/usr/local/bin:$HOME/.local/bin:$PATH"
+            export PATH
             command -v cc
             cc --version
             command -v ld.lld
