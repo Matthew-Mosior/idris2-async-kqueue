@@ -88,3 +88,84 @@ jobs:
           export DYLD_LIBRARY_PATH
           echo "DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH"
           pack run
+
+  freebsd:
+    name: FreeBSD / Idris2 latest
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build and test on FreeBSD
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: "14.4"
+          arch: x86_64
+          mem: 8192
+          sync: rsync
+          copyback: false
+          usesh: true
+          prepare: |
+            set -eux
+            pkg install -y \
+              bash \
+              curl \
+              git \
+              gmake \
+              gmp
+            command -v cc
+            cc --version
+            command -v ld.lld
+            ld.lld --version
+            command -v gmake
+            gmake --version
+            uname -a
+            uname -m
+            git clone --depth=1 \
+              https://github.com/cisco/ChezScheme.git \
+              /tmp/ChezScheme
+            cd /tmp/ChezScheme
+            ./configure \
+              --threads \
+              --disable-x11 \
+              --installprefix="$HOME/.local"
+            gmake -j"$(sysctl -n hw.ncpu)"
+            gmake install
+            PATH="$HOME/.local/bin:/usr/local/bin:$PATH"
+            export PATH
+            command -v scheme
+            scheme --version
+            git clone --depth=1 \
+              https://github.com/stefan-hoeck/idris2-pack.git \
+              /tmp/idris2-pack
+            cd /tmp/idris2-pack
+            gmake micropack SCHEME=scheme
+            PATH="$HOME/.local/bin:/usr/local/bin:$PATH"
+            export PATH
+            command -v idris2
+            idris2 --version
+            command -v pack
+            pack help >/dev/null
+            rm -rf /tmp/ChezScheme
+            rm -rf /tmp/idris2-pack
+          run: |
+            set -eux
+            PATH="$HOME/.local/bin:/usr/local/bin:$PATH"
+            export PATH
+            command -v scheme
+            scheme --version
+            command -v idris2
+            idris2 --version
+            command -v pack
+            command -v cc
+            cc --version
+            command -v ld.lld
+            ld.lld --version
+            pack --no-prompt cleanbuild
+            cd test
+            pack --no-prompt cleanbuild
+            LD_LIBRARY_PATH="$(pack libs-path)"
+            export LD_LIBRARY_PATH
+            echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+            pack run
