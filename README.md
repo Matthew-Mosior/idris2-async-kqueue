@@ -9,6 +9,7 @@ This library provides an [async](https://github.com/stefan-hoeck/idris2-async) c
 ## Kqueue vs. epoll
 
 Kqueue and [epoll](https://en.wikipedia.org/wiki/Epoll) are high-performance both kernel event notifications mechanisms designed to monitor thousands of file descriptors simultaneously in O(1) time complexity.
+
 They both work on a simple premise, which is that you register your interest with the kernel once, and the kernel notifies you exactly which resources are ready.
 
 ### Key workflow differences
