@@ -25,7 +25,7 @@ To manage events in Linux, your application must jump back and forth between use
 
 kqueue is widely considered by developers to be the cleaner API because of its batching capability:
 - `kqueue()` -> Allocates the event queue in the kernel.
-- `kevent()` -> This single powerhouse system call handles everything else.
+- `kevent()` -> This single system call handles everything else.
   - You pass it a changelist (an array of events you want to add, remove, or modify) and an empty eventlist. The kernel applies all of your modifications first, checks for ready events, and fills the eventlist before returning to user space.
 
 ### Summary
