@@ -8,7 +8,6 @@ sourcedir  = "src"
 depends    = base
            , async-posix
            , elab-util
-           , posix
            , ref1
 modules    = IO.Async.Loop.Kqueue
            , System.BSD.Kqueue.Flags
