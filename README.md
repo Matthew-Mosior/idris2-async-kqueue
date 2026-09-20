@@ -4,7 +4,7 @@ This library provides an [async](https://github.com/stefan-hoeck/idris2-async) c
 
 > [!NOTE]
 > This library currently only provides macOS support due to incompatibilities in the [posix](https://github.com/stefan-hoeck/idris2-linux/tree/main/posix) library (dependency of the [async-posix](https://github.com/stefan-hoeck/idris2-async/tree/main/async-posix) library).
-> You can see the errors in [this](https://github.com/Matthew-Mosior/idris2-async-kqueue/actions/runs/35418830057/job/105832538925) failed FreeBSD GitHub action job.
+> You can see the errors in [this](https://github.com/Matthew-Mosior/idris2-async-kqueue/actions/runs/35418830057/job/105832538925) failed FreeBSD GitHub workflow job.
 
 ## Kqueue vs. epoll
 
