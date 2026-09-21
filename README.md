@@ -40,4 +40,4 @@ Kqueue is widely considered by developers to be the cleaner API because of its b
 
 ## API
 
-The `kqueueApp` function is the main interface this library provides to users.
+The `kqueueApp` function exposes the primary API surface for this library.
